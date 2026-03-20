@@ -62,18 +62,24 @@ st.caption(
     "Prototyp planowania EVAR na podstawie załączonych worksheetów Gore, Medtronic i Cook. "
     "To narzędzie wspomagające, nie samodzielna decyzja kliniczna."
 )
+st.error(
+    "**OSTRZEŻENIE KLINICZNE (DISCLAIMER):** Aplikacja stanowi wyłącznie prototyp do celów edukacyjnych i nie może być używana "
+    "jako jedyne narzędzie do podejmowania decyzji klinicznych. Ostateczny dobór stentgraftu musi odbywać się na stacji roboczej "
+    "(np. TeraRecon, OsiriX, 3mensio) w oparciu o pełne, oficjalne IFU producenta."
+)
 
 with st.sidebar:
     st.header("Pomiary")
-    neck_diameter = st.number_input("D1 szyja aorty [mm]", min_value=10.0, max_value=45.0, value=24.0, step=0.5)
-    neck_length = st.number_input("L1 długość szyi [mm]", min_value=0.0, max_value=200.0, value=95.0, step=1.0)
-    neck_angle = st.number_input("Angulacja szyi [°]", min_value=0.0, max_value=120.0, value=35.0, step=1.0)
+    neck_diameter = st.number_input("D1 szyja aorty [mm]", min_value=10.0, max_value=45.0, value=24.0, step=0.5, key="neck_diameter")
+    neck_length = st.number_input("L1 długość szyi [mm]", min_value=0.0, max_value=200.0, value=95.0, step=1.0, key="neck_length")
+    bifurcation_length = st.number_input("L2 nerki → rozwidlenie [mm]", min_value=20.0, max_value=250.0, value=110.0, step=1.0, key="bifurcation_length")
+    neck_angle = st.number_input("Angulacja szyi [°]", min_value=0.0, max_value=120.0, value=35.0, step=1.0, key="neck_angle")
     st.divider()
-    right_diam = st.number_input("Prawa biodrowa średnica landing zone [mm]", min_value=5.0, max_value=35.0, value=13.0, step=0.5)
-    right_length = st.number_input("Prawa biodrowa długość robocza [mm]", min_value=20.0, max_value=220.0, value=115.0, step=1.0)
-    left_diam = st.number_input("Lewa biodrowa średnica landing zone [mm]", min_value=5.0, max_value=35.0, value=14.0, step=0.5)
-    left_length = st.number_input("Lewa biodrowa długość robocza [mm]", min_value=20.0, max_value=220.0, value=120.0, step=1.0)
-    ipsi_side = st.radio("Strona ipsilateralna", options=["right", "left"], format_func=lambda x: "Prawa" if x == "right" else "Lewa")
+    right_diam = st.number_input("Prawa biodrowa średnica landing zone [mm]", min_value=5.0, max_value=35.0, value=13.0, step=0.5, key="right_diam")
+    right_length = st.number_input("Prawa biodrowa długość robocza [mm]", min_value=20.0, max_value=220.0, value=115.0, step=1.0, key="right_length")
+    left_diam = st.number_input("Lewa biodrowa średnica landing zone [mm]", min_value=5.0, max_value=35.0, value=14.0, step=0.5, key="left_diam")
+    left_length = st.number_input("Lewa biodrowa długość robocza [mm]", min_value=20.0, max_value=220.0, value=120.0, step=1.0, key="left_length")
+    ipsi_side = st.radio("Strona ipsilateralna", options=["right", "left"], format_func=lambda x: "Prawa" if x == "right" else "Lewa", key="ipsi_side")
     st.divider()
     st.warning(
         "Wynik należy zweryfikować z pełnym IFU, obrazowaniem i doświadczeniem operatora. "
@@ -84,6 +90,7 @@ measurements = Measurements(
     neck_diameter_mm=neck_diameter,
     neck_length_mm=neck_length,
     neck_angle_deg=neck_angle,
+    aortic_bifurcation_length_mm=bifurcation_length,
     right_iliac_diameter_mm=right_diam,
     left_iliac_diameter_mm=left_diam,
     right_iliac_length_mm=right_length,
@@ -97,16 +104,61 @@ summary_cols = st.columns(4)
 summary_cols[0].metric("Szyja", f"{measurements.neck_diameter_mm:.1f} mm", f"L1 {measurements.neck_length_mm:.0f} mm")
 summary_cols[1].metric("Ipsilateralna", f"{measurements.ipsilateral_label}", f"{measurements.ipsilateral_diameter_mm:.1f} mm / {measurements.ipsilateral_length_mm:.0f} mm")
 summary_cols[2].metric("Kontralateralna", f"{measurements.contralateral_label}", f"{measurements.contralateral_diameter_mm:.1f} mm / {measurements.contralateral_length_mm:.0f} mm")
-summary_cols[3].metric("Angulacja", f"{measurements.neck_angle_deg:.0f}°")
+summary_cols[3].metric("Angulacja", f"{measurements.neck_angle_deg:.0f}°", f"L2 {measurements.aortic_bifurcation_length_mm:.0f} mm")
 
 if result["warnings"]:
     with st.expander("Globalne ostrzeżenia", expanded=True):
         for warning in result["warnings"]:
             st.write(f"- {warning}")
 
-tab_summary, tab_gore, tab_cook, tab_medtronic, tab_tables = st.tabs(
-    ["Podsumowanie", "Gore", "Cook", "Medtronic", "Tabele źródłowe"]
+tab_summary, tab_vis, tab_gore, tab_cook, tab_medtronic, tab_tables = st.tabs(
+    ["Podsumowanie", "Wizualizacja", "Gore", "Cook", "Medtronic", "Tabele źródłowe"]
 )
+
+
+def render_oversize_badge(value: float | None) -> None:
+    if value is None:
+        return
+    if 10 <= value <= 20:
+        color = "#166534"
+        background = "#dcfce7"
+    elif 8 <= value <= 25:
+        color = "#854d0e"
+        background = "#fef3c7"
+    else:
+        color = "#991b1b"
+        background = "#fee2e2"
+    st.markdown(
+        f"""
+        <span style="display:inline-block;padding:0.2rem 0.55rem;border-radius:999px;
+        font-size:0.82rem;font-weight:700;background:{background};color:{color};margin-bottom:0.35rem;">
+        Oversizing {value:.1f}%
+        </span>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_aorta_svg(m: Measurements) -> None:
+    svg_code = f"""
+    <svg viewBox="0 0 420 500" width="100%" height="430px" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="#f8fafc" rx="18"/>
+        <path d="M 180 35 L 180 120 L 240 120 L 240 35 Z" fill="#fecaca" stroke="#dc2626" stroke-width="2"/>
+        <ellipse cx="210" cy="210" rx="80" ry="78" fill="#fee2e2" stroke="#ef4444" stroke-width="2"/>
+        <path d="M 176 277 L 118 425 L 155 437 L 205 286 Z" fill="#bfdbfe" stroke="#2563eb" stroke-width="2"/>
+        <path d="M 244 277 L 302 425 L 265 437 L 215 286 Z" fill="#bfdbfe" stroke="#2563eb" stroke-width="2"/>
+        <text x="210" y="78" font-family="Arial" font-size="14" text-anchor="middle" fill="#7f1d1d">Szyja: {m.neck_diameter_mm:.1f} mm</text>
+        <text x="275" y="78" font-family="Arial" font-size="12" fill="#475569">L1: {m.neck_length_mm:.0f} mm</text>
+        <text x="115" y="60" font-family="Arial" font-size="12" fill="#475569">Angulacja: {m.neck_angle_deg:.0f}°</text>
+        <text x="210" y="165" font-family="Arial" font-size="13" text-anchor="middle" fill="#475569">Nerki → bifurkacja: {m.aortic_bifurcation_length_mm:.0f} mm</text>
+        <text x="90" y="355" font-family="Arial" font-size="14" fill="#1e3a8a" text-anchor="end">Prawa: {m.right_iliac_diameter_mm:.1f} mm</text>
+        <text x="330" y="355" font-family="Arial" font-size="14" fill="#1e3a8a">Lewa: {m.left_iliac_diameter_mm:.1f} mm</text>
+        <text x="92" y="374" font-family="Arial" font-size="12" fill="#475569" text-anchor="end">Długość: {m.right_iliac_length_mm:.0f} mm</text>
+        <text x="330" y="374" font-family="Arial" font-size="12" fill="#475569">Długość: {m.left_iliac_length_mm:.0f} mm</text>
+        <text x="210" y="468" font-family="Arial" font-size="12" text-anchor="middle" fill="#334155">Schemat poglądowy anatomii do planowania EVAR</text>
+    </svg>
+    """
+    st.markdown(svg_code, unsafe_allow_html=True)
 
 
 def render_recommendation_card(rec: dict) -> None:
@@ -127,6 +179,7 @@ def render_recommendation_card(rec: dict) -> None:
             extra = f" | katalog {component['catalogue']}" if component.get("catalogue") else ""
             with st.container(border=True):
                 st.write(f"**{title}**")
+                render_oversize_badge(component.get("oversize_pct"))
                 st.write(component["label"])
                 st.caption(f"{component['details']} | {official}{extra}")
     if rec["warnings"]:
@@ -141,6 +194,14 @@ with tab_summary:
     st.subheader("Ranking rodzin urządzeń")
     for rec in result["recommendations"]:
         render_recommendation_card(rec)
+
+with tab_vis:
+    st.subheader("Wizualizacja anatomii")
+    render_aorta_svg(measurements)
+    st.caption(
+        "To jest lekka wizualizacja SVG generowana dynamicznie w Pythonie. "
+        "Na tym etapie ma wspierać szybkie zrozumienie anatomii i komunikację planu."
+    )
 
 with tab_gore:
     gore_recs = [rec for rec in result["recommendations"] if rec["manufacturer"] == "Gore"]

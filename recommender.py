@@ -30,6 +30,7 @@ class Measurements:
     neck_diameter_mm: float
     neck_length_mm: float
     neck_angle_deg: float
+    aortic_bifurcation_length_mm: float
     right_iliac_diameter_mm: float
     left_iliac_diameter_mm: float
     right_iliac_length_mm: float
@@ -90,15 +91,25 @@ def status_from_flags(exact: bool, borderline: bool) -> str:
 
 def build_global_warnings(m: Measurements) -> list[str]:
     warnings: list[str] = []
-    if m.neck_length_mm < 15:
+    if m.neck_length_mm < 10:
+        warnings.append("Hostile anatomy: długość szyi < 10 mm. Standardowy EVAR może być niewystarczający i może wymagać FEVAR/ChEVAR.")
+    elif m.neck_length_mm < 15:
         warnings.append("Krótka szyja aorty (< 15 mm) zwiększa ryzyko i zwykle wymaga bardzo ostrożnej kwalifikacji.")
     if m.neck_angle_deg >= 60:
         warnings.append("Znaczna angulacja szyi (>= 60°) wymaga weryfikacji IFU i doświadczenia operatora.")
     if min(m.right_iliac_diameter_mm, m.left_iliac_diameter_mm) < 8:
         warnings.append("Jedna z tętnic biodrowych ma średnicę < 8 mm, co może oznaczać trudny dostęp i ryzyko okluzji.")
+    if m.neck_diameter_mm > 32:
+        warnings.append("Hostile anatomy: szyja > 32 mm wykracza poza typowe wskazania klasycznego infrarenal EVAR i może wymagać fenestracji/chimney.")
     if m.neck_diameter_mm < 16 or m.neck_diameter_mm > 32:
         warnings.append("Średnica szyi poza zakresem typowych standardowych systemów infrarenalnych z załączonych materiałów.")
     return warnings
+
+
+def overlap_range_from_length_row(length_row: dict[str, Any]) -> tuple[float, float]:
+    min_overlap = length_row["total_length_mm"] - length_row["vessel_length_mm"][1]
+    max_overlap = length_row["total_length_mm"] - length_row["vessel_length_mm"][0]
+    return min_overlap, max_overlap
 
 
 def recommend_cook(m: Measurements) -> dict[str, Any]:
@@ -142,30 +153,40 @@ def recommend_cook(m: Measurements) -> dict[str, Any]:
     components: list[dict[str, Any]] = []
 
     if main_body_diameter and main_body_length:
+        neck_oversize = oversize_pct(main_body_diameter["graft_diameter_mm"], m.neck_diameter_mm)
         components.append(
             {
                 "component": "Main body",
                 "label": f"{main_body_diameter['graft_diameter_mm']} mm | CL {main_body_length['contralateral_length_mm']} mm | IL {main_body_length['ipsilateral_length_mm']} mm",
-                "details": f"D1 {m.neck_diameter_mm:.1f} mm w paśmie {band_label(main_body_diameter['neck_range_mm'])}; L1 {m.neck_length_mm:.1f} mm w paśmie {band_label(main_body_length['neck_length_range_mm'])}.",
+                "details": f"D1 {m.neck_diameter_mm:.1f} mm w paśmie {band_label(main_body_diameter['neck_range_mm'])}; L1 {m.neck_length_mm:.1f} mm w paśmie {band_label(main_body_length['neck_length_range_mm'])}; oversizing szyi {neck_oversize:.1f}%.",
                 "official": True,
+                "oversize_pct": neck_oversize,
             }
         )
     if contra_diameter and contra_length:
+        contra_oversize = oversize_pct(contra_diameter["graft_diameter_mm"], m.contralateral_diameter_mm)
+        overlap_min, overlap_max = overlap_range_from_length_row(contra_length)
         components.append(
             {
                 "component": f"Odnogа kontralateralna ({m.contralateral_label})",
                 "label": f"{contra_diameter['graft_diameter_mm']} mm | etykieta {contra_length['label_length_mm']} mm | całkowita {contra_length['total_length_mm']} mm",
-                "details": f"Średnica {m.contralateral_diameter_mm:.1f} mm w paśmie {band_label(contra_diameter['iliac_range_mm'])}; długość naczynia {m.contralateral_length_mm:.1f} mm w paśmie {band_label(contra_length['vessel_length_mm'])}.",
+                "details": f"Średnica {m.contralateral_diameter_mm:.1f} mm w paśmie {band_label(contra_diameter['iliac_range_mm'])}; długość naczynia {m.contralateral_length_mm:.1f} mm w paśmie {band_label(contra_length['vessel_length_mm'])}; oversizing landing zone {contra_oversize:.1f}%; przewidywana zakładka ~ {overlap_min:.0f}-{overlap_max:.0f} mm.",
                 "official": True,
+                "oversize_pct": contra_oversize,
+                "overlap_range_mm": (overlap_min, overlap_max),
             }
         )
     if ipsi_diameter and ipsi_length:
+        ipsi_oversize = oversize_pct(ipsi_diameter["graft_diameter_mm"], m.ipsilateral_diameter_mm)
+        overlap_min, overlap_max = overlap_range_from_length_row(ipsi_length)
         components.append(
             {
                 "component": f"Odnogа ipsilateralna ({m.ipsilateral_label})",
                 "label": f"{ipsi_diameter['graft_diameter_mm']} mm | etykieta {ipsi_length['label_length_mm']} mm | całkowita {ipsi_length['total_length_mm']} mm",
-                "details": f"Średnica {m.ipsilateral_diameter_mm:.1f} mm w paśmie {band_label(ipsi_diameter['iliac_range_mm'])}; długość naczynia {m.ipsilateral_length_mm:.1f} mm w paśmie {band_label(ipsi_length['vessel_length_mm'])}.",
+                "details": f"Średnica {m.ipsilateral_diameter_mm:.1f} mm w paśmie {band_label(ipsi_diameter['iliac_range_mm'])}; długość naczynia {m.ipsilateral_length_mm:.1f} mm w paśmie {band_label(ipsi_length['vessel_length_mm'])}; oversizing landing zone {ipsi_oversize:.1f}%; przewidywana zakładka ~ {overlap_min:.0f}-{overlap_max:.0f} mm.",
                 "official": True,
+                "oversize_pct": ipsi_oversize,
+                "overlap_range_mm": (overlap_min, overlap_max),
             }
         )
 
@@ -243,24 +264,33 @@ def recommend_gore_family(pool: list[dict[str, Any]], family_label: str, m: Meas
     exact = bool(main_body and contra_leg and main_body["overall_length_mm"] <= m.ipsilateral_length_mm and contra_leg["length_mm"] <= m.contralateral_length_mm)
     components: list[dict[str, Any]] = []
     if main_body:
+        neck_oversize = oversize_pct(main_body["aortic_diameter_mm"], m.neck_diameter_mm)
         components.append(
             {
                 "component": f"Trunk + ipsilateral leg ({m.ipsilateral_label})",
                 "label": f"{main_body['aortic_diameter_mm']} / {main_body['iliac_diameter_mm']} mm | długość {main_body['overall_length_mm']} mm",
-                "details": f"Szyja {m.neck_diameter_mm:.1f} mm mieści się w paśmie {band_label(main_body['aortic_range_mm'])}; biodrowa ipsilateralna {m.ipsilateral_diameter_mm:.1f} mm w paśmie {band_label(main_body['iliac_range_mm'])}.",
+                "details": f"Szyja {m.neck_diameter_mm:.1f} mm mieści się w paśmie {band_label(main_body['aortic_range_mm'])}; biodrowa ipsilateralna {m.ipsilateral_diameter_mm:.1f} mm w paśmie {band_label(main_body['iliac_range_mm'])}; oversizing szyi {neck_oversize:.1f}%.",
                 "official": True,
                 "catalogue": main_body.get("catalogue"),
+                "oversize_pct": neck_oversize,
             }
         )
     if contra_leg:
+        contra_oversize = oversize_pct(contra_leg["graft_diameter_mm"], m.contralateral_diameter_mm)
+        min_overlap_mm = 22 if contra_leg["graft_diameter_mm"] >= 23 else 16
         components.append(
             {
                 "component": f"Odnogа kontralateralna ({m.contralateral_label})",
                 "label": f"{contra_leg['graft_diameter_mm']} mm | długość {contra_leg['length_mm']} mm",
-                "details": f"Średnica {m.contralateral_diameter_mm:.1f} mm mieści się w paśmie {band_label(contra_leg['iliac_range_mm'])}.",
+                "details": f"Średnica {m.contralateral_diameter_mm:.1f} mm mieści się w paśmie {band_label(contra_leg['iliac_range_mm'])}; oversizing landing zone {contra_oversize:.1f}%; wymagany overlap wg uproszczenia >= {min_overlap_mm} mm.",
                 "official": True,
                 "catalogue": contra_leg.get("catalogue"),
+                "oversize_pct": contra_oversize,
+                "required_overlap_mm": min_overlap_mm,
             }
+        )
+        warnings.append(
+            f"Gore: potwierdź overlap między korpusem a odnogą. W tej wersji przyjmuję próg orientacyjny >= {min_overlap_mm} mm zależnie od średnicy komponentu."
         )
 
     notes = [
@@ -344,6 +374,7 @@ def recommend_medtronic(m: Measurements) -> dict[str, Any]:
                 "label": f"{main_body['proximal_diameter_mm']} / {main_body['distal_diameter_mm']} mm | długość {main_body['covered_length_mm']} mm",
                 "details": f"Oversizing szyi ~ {main_body['neck_oversize_pct']:.1f}% i dystalny landing ~ {main_body['iliac_oversize_pct']:.1f}% względem strony {m.ipsilateral_label.lower()}.",
                 "official": False,
+                "oversize_pct": main_body["neck_oversize_pct"],
             }
         )
     if contra_limb:
@@ -353,8 +384,11 @@ def recommend_medtronic(m: Measurements) -> dict[str, Any]:
                 "label": f"{contra_limb['distal_diameter_mm']} mm | długość {contra_limb['covered_length_mm']} mm",
                 "details": f"Oversizing landing zone ~ {contra_limb['iliac_oversize_pct']:.1f}%.",
                 "official": False,
+                "oversize_pct": contra_limb["iliac_oversize_pct"],
             }
         )
+    if main_body and contra_limb:
+        warnings.append("Medtronic: potwierdź w IFU, że połączone komponenty zapewniają minimum 30 mm zakładki (overlap).")
 
     extenders = [item for item in MEDTRONIC_AORTIC_EXTENDERS if 10 <= oversize_pct(item["diameter_mm"], m.neck_diameter_mm) <= 20]
     iliac_ext = [item for item in MEDTRONIC_ILIAC_EXTENDERS if 0 <= oversize_pct(item["diameter_mm"], m.contralateral_diameter_mm) <= 25]
