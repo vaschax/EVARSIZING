@@ -21,15 +21,33 @@ from evar_data import (
 )
 from recommender import build_recommendations
 from ui.cards import render_recommendation_card, render_warning
-from ui.forms import build_measurements_from_state, initialize_measurement_state, render_measurement_form, reset_measurement_state
+from ui.forms import build_measurements_from_state, initialize_measurement_state, measurement_rows, render_field_card, reset_measurement_state
 from ui.report_pdf import build_plan_pdf
 from ui.svg_aorta import render_aorta_svg, render_focus_selector
+
+
+RECOMMENDATION_ORDER = (
+    ("Cook", "Zenith Alpha"),
+    ("Gore", "EXCLUDER AAA with C3"),
+    ("Gore", "EXCLUDER Conformable AAA (Active Control)"),
+    ("Medtronic", "Endurant II / IIs"),
+)
+
+
+def recommendation_key(manufacturer: str, family: str) -> str:
+    return f"{manufacturer}::{family}"
+
+
+def recommendation_label(key: str) -> str:
+    manufacturer, family = key.split("::", maxsplit=1)
+    return f"{manufacturer} | {family}"
 
 
 st.set_page_config(page_title="EVAR Sizing Prototype", page_icon="🩺", layout="wide")
 initialize_measurement_state()
 st.session_state.setdefault("patient_id", "")
 st.session_state.setdefault("operator_notes", "")
+st.session_state.setdefault("selected_recommendation_key", "")
 
 st.markdown(
     """
@@ -81,7 +99,16 @@ with st.sidebar:
 
 measurements = build_measurements_from_state()
 result = build_recommendations(measurements)
-top_recommendation = result.recommendations[0] if result.recommendations else None
+recommendation_map = {
+    recommendation_key(rec.manufacturer, rec.family): rec
+    for rec in result.recommendations
+}
+ordered_recommendation_keys = [
+    recommendation_key(manufacturer, family)
+    for manufacturer, family in RECOMMENDATION_ORDER
+    if recommendation_key(manufacturer, family) in recommendation_map
+]
+selected_recommendation = recommendation_map.get(st.session_state["selected_recommendation_key"])
 
 st.markdown('<div class="app-shell">', unsafe_allow_html=True)
 st.markdown('<div class="app-title">EVAR Stentgraft Sizing Worksheet</div>', unsafe_allow_html=True)
@@ -109,16 +136,27 @@ if result.warnings:
         for warning in result.warnings:
             render_warning(warning)
 
+selection_options = [""] + ordered_recommendation_keys
+if st.session_state["selected_recommendation_key"] not in selection_options:
+    st.session_state["selected_recommendation_key"] = ""
+selected_key = st.selectbox(
+    "Typ stentgraftu",
+    options=selection_options,
+    key="selected_recommendation_key",
+    format_func=lambda key: "Wybierz system stentgraftu" if key == "" else recommendation_label(key),
+)
+selected_recommendation = recommendation_map.get(selected_key)
+
 plan_pdf_bytes: bytes | None = None
 pdf_error: str | None = None
-if top_recommendation:
+if selected_recommendation:
     try:
         plan_pdf_bytes = build_plan_pdf(
             patient_id=st.session_state["patient_id"],
             operator_notes=st.session_state["operator_notes"],
             measurements=measurements,
             result=result,
-            top_recommendation=top_recommendation,
+            top_recommendation=selected_recommendation,
         )
     except RuntimeError as exc:
         pdf_error = str(exc)
@@ -129,24 +167,41 @@ tab_worksheet, tab_summary, tab_gore, tab_cook, tab_medtronic, tab_tables = st.t
 
 with tab_worksheet:
     render_focus_selector()
-    worksheet_left, worksheet_right = st.columns([1.1, 1.0], gap="large")
-    with worksheet_left:
-        st.subheader("Schemat aorty")
+    st.subheader("Anatomiczny worksheet")
+    left_col, center_col, right_col = st.columns([0.82, 2.25, 0.92], gap="large")
+    with left_col:
+        st.markdown("**Lewa strona worksheetu**")
+        render_field_card("neck_angle_deg", compact=True)
+        st.write("")
+        render_field_card("right_iliac_diameter_mm", compact=True)
+        render_field_card("right_iliac_length_mm", compact=True)
+        render_field_card("right_eia_diameter_mm", compact=True)
+    with center_col:
         render_aorta_svg(
             measurements,
             selected_key=st.session_state["worksheet_focus"],
-            top_recommendation=top_recommendation,
+            top_recommendation=selected_recommendation,
         )
         st.caption(
-            "Schemat po lewej i formularz po prawej korzystają z tych samych danych sesji. "
-            "Zmiana wartości w komórkach natychmiast przelicza propozycje stentgraftów."
+            "Kafelki są pozycjonowane na obrazie, a pola edycji znajdują się po bokach schematu. "
+            "Kliknięcie hotspotu na obrazie ustawia aktywny pomiar."
         )
-    with worksheet_right:
-        render_measurement_form()
-        st.success("Po uzupełnieniu pól aplikacja samodzielnie proponuje sprzęt w zakładce `Podsumowanie` i na overlayu schematu.")
+    with right_col:
+        st.markdown("**Prawa strona worksheetu**")
+        render_field_card("neck_diameter_mm", compact=True)
+        render_field_card("neck_length_mm", compact=True)
+        render_field_card("aortic_bifurcation_length_mm", compact=True)
+        render_field_card("left_iliac_diameter_mm", compact=True)
+        render_field_card("left_iliac_length_mm", compact=True)
+        render_field_card("left_eia_diameter_mm", compact=True)
+
+    with st.expander("Tabela pomiarów", expanded=False):
+        st.dataframe(pd.DataFrame(measurement_rows()), hide_index=True, use_container_width=True)
+
+    st.success("Po uzupełnieniu pól aplikacja wskazuje dopasowany sprzęt dla wybranego systemu w zakładce `Podsumowanie`.")
 
 with tab_summary:
-    st.subheader("Ranking rodzin urządzeń")
+    st.subheader("Dobór sprzętu dla wybranego systemu")
     if plan_pdf_bytes:
         st.download_button(
             "Generuj Plan (PDF)",
@@ -156,8 +211,10 @@ with tab_summary:
         )
     elif pdf_error:
         st.error(pdf_error)
-    for rec in result.recommendations:
-        render_recommendation_card(rec)
+    if selected_recommendation is None:
+        st.info("Wybierz typ stentgraftu z listy powyżej, aby zobaczyć dopasowane komponenty.")
+    else:
+        render_recommendation_card(selected_recommendation)
 
 with tab_gore:
     gore_recs = [rec for rec in result.recommendations if rec.manufacturer == "Gore"]

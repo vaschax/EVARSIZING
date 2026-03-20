@@ -111,6 +111,24 @@ def _single_field_row(field: NumericField) -> None:
         )
 
 
+def render_field_card(key: str, *, compact: bool = False) -> None:
+    field = FIELD_BY_KEY[key]
+    with st.container(border=True):
+        st.caption(field.anatomy_code)
+        st.markdown(f"**{field.label}**")
+        st.number_input(
+            field.label,
+            min_value=field.min_value,
+            max_value=field.max_value,
+            step=field.step,
+            format=field.format_string,
+            key=field.key,
+            label_visibility="collapsed",
+        )
+        if not compact:
+            st.caption(f"Zakres: {field.min_value:g}-{field.max_value:g}")
+
+
 def _bilateral_field_row(label: str, right_field: NumericField, left_field: NumericField) -> None:
     label_col, right_col, left_col = st.columns([2.5, 1.0, 1.0], gap="small")
     with label_col:
