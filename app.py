@@ -21,7 +21,7 @@ from evar_data import (
 )
 from recommender import build_recommendations
 from ui.cards import render_recommendation_card, render_warning
-from ui.forms import build_measurements_from_state, initialize_measurement_state, measurement_rows, render_measurement_form, reset_measurement_state
+from ui.forms import build_measurements_from_state, initialize_measurement_state, render_measurement_form, reset_measurement_state
 from ui.report_pdf import build_plan_pdf
 from ui.svg_aorta import render_aorta_svg, render_focus_selector
 
@@ -129,23 +129,21 @@ tab_worksheet, tab_summary, tab_gore, tab_cook, tab_medtronic, tab_tables = st.t
 
 with tab_worksheet:
     render_focus_selector()
-    worksheet_left, worksheet_right = st.columns([1.25, 1.0], gap="large")
+    worksheet_left, worksheet_right = st.columns([1.1, 1.0], gap="large")
     with worksheet_left:
-        st.subheader("Schemat aorty i komponentów")
+        st.subheader("Schemat aorty")
         render_aorta_svg(
             measurements,
             selected_key=st.session_state["worksheet_focus"],
             top_recommendation=top_recommendation,
         )
         st.caption(
-            "Diagram jest renderowany z danych sesji. Focus worksheetu podświetla aktualnie edytowany wymiar, "
-            "a overlay pokazuje komponenty z najwyżej ocenionej rekomendacji."
+            "Schemat po lewej i formularz po prawej korzystają z tych samych danych sesji. "
+            "Zmiana wartości w komórkach natychmiast przelicza propozycje stentgraftów."
         )
     with worksheet_right:
         render_measurement_form()
-        st.divider()
-        st.write("**Aktualny worksheet**")
-        st.dataframe(pd.DataFrame(measurement_rows()), hide_index=True, use_container_width=True)
+        st.success("Po uzupełnieniu pól aplikacja samodzielnie proponuje sprzęt w zakładce `Podsumowanie` i na overlayu schematu.")
 
 with tab_summary:
     st.subheader("Ranking rodzin urządzeń")
