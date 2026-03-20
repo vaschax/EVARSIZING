@@ -10,12 +10,12 @@ from evar_data import (
     COOK_MAIN_BODY_LENGTHS,
     DATA_SOURCES,
 )
-from domain.models import ComponentRecommendation, Measurements, Recommendation
-from engines.common import band_label, in_range, overlap_range_from_length_row, oversize_pct, score_recommendation, status_from_flags
+from domain.models import ComponentRecommendation, Measurements, Recommendation, WarningMessage
+from engines.common import band_label, in_range, overlap_range_from_length_row, oversize_pct, score_recommendation, status_from_flags, make_warning
 
 
 def recommend_cook(m: Measurements) -> Recommendation:
-    warnings: list[str] = []
+    warnings: list[WarningMessage] = []
     main_body_diameter = next((item for item in COOK_MAIN_BODY_DIAMETERS if in_range(m.neck_diameter_mm, item["neck_range_mm"])), None)
     main_body_length = next((item for item in COOK_MAIN_BODY_LENGTHS if in_range(m.neck_length_mm, item["neck_length_range_mm"])), None)
 
@@ -43,13 +43,13 @@ def recommend_cook(m: Measurements) -> Recommendation:
     ) if ipsi_diameter else None
 
     if not main_body_diameter:
-        warnings.append("Cook Zenith Alpha: brak głównego korpusu dla podanej średnicy szyi D1.")
+        warnings.append(make_warning("Cook Zenith Alpha: brak głównego korpusu dla podanej średnicy szyi D1.", code="cook_no_main_body"))
     if not main_body_length:
-        warnings.append("Cook Zenith Alpha: długość L1 poza zakresem worksheet (75-142 mm).")
+        warnings.append(make_warning("Cook Zenith Alpha: długość L1 poza zakresem worksheet (75-142 mm).", code="cook_length_out_of_range"))
     if not contra_diameter or not contra_length:
-        warnings.append(f"Cook Zenith Alpha: brak pewnego doboru odnogi kontralateralnej dla strony {m.contralateral_label.lower()}.")
+        warnings.append(make_warning(f"Cook Zenith Alpha: brak pewnego doboru odnogi kontralateralnej dla strony {m.contralateral_label.lower()}.", code="cook_no_contra_limb"))
     if not ipsi_diameter or not ipsi_length:
-        warnings.append(f"Cook Zenith Alpha: brak pewnego doboru odnogi ipsilateralnej dla strony {m.ipsilateral_label.lower()}.")
+        warnings.append(make_warning(f"Cook Zenith Alpha: brak pewnego doboru odnogi ipsilateralnej dla strony {m.ipsilateral_label.lower()}.", code="cook_no_ipsi_limb"))
 
     exact = all([main_body_diameter, main_body_length, contra_diameter, contra_length, ipsi_diameter, ipsi_length])
     components: list[ComponentRecommendation] = []
@@ -120,12 +120,13 @@ def recommend_cook(m: Measurements) -> Recommendation:
         manufacturer="Cook",
         family="Zenith Alpha",
         status=status_from_flags(exact, bool(components)),
-        score=score_recommendation(exact, len(warnings)),
+        score=score_recommendation(exact, warnings),
         warnings=tuple(warnings),
         components=tuple(components),
         notes=(
             "Reguły oparte bezpośrednio o worksheet Zenith Alpha.",
             "Cook jako jedyny z załączonych materiałów daje prostą mapę D1/L1 oraz D2/D3/L2/L3.",
+            "Profil dostępu dla Cook nie jest jeszcze zakodowany w obecnych danych, więc access-check nie jest liczony automatycznie.",
         ),
         source=DATA_SOURCES["cook"],
     )

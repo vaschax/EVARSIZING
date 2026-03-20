@@ -18,13 +18,16 @@ from evar_data import (
     MEDTRONIC_SHORT_BODIES,
 )
 from recommender import build_recommendations
-from ui.cards import render_recommendation_card
+from ui.cards import render_recommendation_card, render_warning
 from ui.forms import build_measurements_from_state, initialize_measurement_state, measurement_rows, render_measurement_form, reset_measurement_state
+from ui.report_pdf import build_plan_pdf
 from ui.svg_aorta import render_aorta_svg, render_focus_selector
 
 
 st.set_page_config(page_title="EVAR Sizing Prototype", page_icon="🩺", layout="wide")
 initialize_measurement_state()
+st.session_state.setdefault("patient_id", "")
+st.session_state.setdefault("operator_notes", "")
 
 st.markdown(
     """
@@ -69,6 +72,10 @@ with st.sidebar:
         "Docelowy workflow: wpisujesz pomiary w worksheet, aplikacja przelicza ranking rodzin "
         "urządzeń i pokazuje komponenty na wspólnym schemacie."
     )
+    st.divider()
+    st.markdown("### Plan operacyjny")
+    st.text_input("ID pacjenta", key="patient_id")
+    st.text_area("Uwagi operatora", key="operator_notes", height=120)
 
 measurements = build_measurements_from_state()
 result = build_recommendations(measurements)
@@ -88,16 +95,31 @@ st.error(
     "(np. TeraRecon, OsiriX, 3mensio) w oparciu o pełne, oficjalne IFU producenta."
 )
 
-summary_cols = st.columns(4)
+summary_cols = st.columns(5)
 summary_cols[0].metric("Szyja", f"{measurements.neck_diameter_mm:.1f} mm", f"L1 {measurements.neck_length_mm:.0f} mm")
-summary_cols[1].metric("Ipsilateralna", measurements.ipsilateral_label, f"{measurements.ipsilateral_diameter_mm:.1f} mm / {measurements.ipsilateral_length_mm:.0f} mm")
-summary_cols[2].metric("Kontralateralna", measurements.contralateral_label, f"{measurements.contralateral_diameter_mm:.1f} mm / {measurements.contralateral_length_mm:.0f} mm")
-summary_cols[3].metric("Angulacja", f"{measurements.neck_angle_deg:.0f}°", f"L2 {measurements.aortic_bifurcation_length_mm:.0f} mm")
+summary_cols[1].metric("Ipsilateralna", measurements.ipsilateral_label, f"{measurements.ipsilateral_diameter_mm:.1f} mm / EIA {measurements.ipsilateral_eia_diameter_mm:.1f} mm")
+summary_cols[2].metric("Kontralateralna", measurements.contralateral_label, f"{measurements.contralateral_diameter_mm:.1f} mm / EIA {measurements.contralateral_eia_diameter_mm:.1f} mm")
+summary_cols[3].metric("Długości", f"{measurements.ipsilateral_length_mm:.0f}/{measurements.contralateral_length_mm:.0f} mm", "ipsi/contra")
+summary_cols[4].metric("Angulacja", f"{measurements.neck_angle_deg:.0f}°", f"L2 {measurements.aortic_bifurcation_length_mm:.0f} mm")
 
 if result.warnings:
     with st.expander("Globalne ostrzeżenia", expanded=True):
         for warning in result.warnings:
-            st.write(f"- {warning}")
+            render_warning(warning)
+
+plan_pdf_bytes: bytes | None = None
+pdf_error: str | None = None
+if top_recommendation:
+    try:
+        plan_pdf_bytes = build_plan_pdf(
+            patient_id=st.session_state["patient_id"],
+            operator_notes=st.session_state["operator_notes"],
+            measurements=measurements,
+            result=result,
+            top_recommendation=top_recommendation,
+        )
+    except RuntimeError as exc:
+        pdf_error = str(exc)
 
 tab_worksheet, tab_summary, tab_gore, tab_cook, tab_medtronic, tab_tables = st.tabs(
     ["Worksheet", "Podsumowanie", "Gore", "Cook", "Medtronic", "Tabele źródłowe"]
@@ -125,6 +147,15 @@ with tab_worksheet:
 
 with tab_summary:
     st.subheader("Ranking rodzin urządzeń")
+    if plan_pdf_bytes:
+        st.download_button(
+            "Generuj Plan (PDF)",
+            data=plan_pdf_bytes,
+            file_name=f"evar-plan-{st.session_state['patient_id'] or 'case'}.pdf",
+            mime="application/pdf",
+        )
+    elif pdf_error:
+        st.error(pdf_error)
     for rec in result.recommendations:
         render_recommendation_card(rec)
 

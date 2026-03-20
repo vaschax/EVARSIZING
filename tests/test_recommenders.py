@@ -9,6 +9,8 @@ def valid_measurements(**overrides) -> Measurements:
         "aortic_bifurcation_length_mm": 110.0,
         "right_iliac_diameter_mm": 12.0,
         "left_iliac_diameter_mm": 12.0,
+        "right_eia_diameter_mm": 8.0,
+        "left_eia_diameter_mm": 8.0,
         "right_iliac_length_mm": 115.0,
         "left_iliac_length_mm": 120.0,
         "ipsilateral_side": "right",
@@ -38,4 +40,10 @@ def test_cook_recommendation_contains_overlap_metadata() -> None:
 def test_medtronic_contains_overlap_warning() -> None:
     bundle = build_recommendations(valid_measurements())
     medtronic = next(item for item in bundle.recommendations if item.manufacturer == "Medtronic")
-    assert any("30 mm" in warning for warning in medtronic.warnings)
+    assert any("30 mm" in warning.message for warning in medtronic.warnings)
+
+
+def test_access_warning_becomes_critical_for_narrow_eia() -> None:
+    bundle = build_recommendations(valid_measurements(right_eia_diameter_mm=5.5))
+    gore = next(item for item in bundle.recommendations if item.family == "EXCLUDER Conformable AAA (Active Control)")
+    assert any(item.severity == "critical" and "EIA 5.5 mm" in item.message for item in gore.warnings)

@@ -46,3 +46,5 @@ pytest
 - Logika Medtronic jest częściowo heurystyczna, ponieważ załączony PDF podaje rozmiary urządzenia, ale nie pełne zakresy naczyń.
 - W aplikacji jest liczony oversizing oraz pokazywane są ostrzeżenia hostile anatomy i overlap, ale nadal należy je traktować jako wsparcie planowania, a nie ostateczne IFU.
 - Formularz pomiarowy i worksheet SVG działają na wspólnym `session_state`, więc zmiany w pomiarach natychmiast przeliczają ranking i overlay komponentów.
+- Aplikacja sprawdza teraz także średnice EIA względem profilu dostępowego systemu (`F`) i oznacza konflikty jako `critical`.
+- Dostępny jest eksport prostego planu operacyjnego do PDF z pomiarami, rekomendacją i kodami katalogowymi.

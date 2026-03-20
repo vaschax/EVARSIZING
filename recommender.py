@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from evar_data import DATA_SOURCES
-from domain.models import ComponentRecommendation, Measurements, Recommendation, RecommendationBundle
+from domain.models import ComponentRecommendation, Measurements, Recommendation, RecommendationBundle, WarningMessage
 from engines import recommend_cook, recommend_gore_active_control, recommend_gore_c3, recommend_medtronic
 from engines.common import build_global_warnings, oversize_pct
 
@@ -12,6 +12,7 @@ __all__ = [
     "Measurements",
     "Recommendation",
     "RecommendationBundle",
+    "WarningMessage",
     "build_global_warnings",
     "build_recommendations",
     "oversize_pct",

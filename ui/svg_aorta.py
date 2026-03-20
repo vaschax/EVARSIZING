@@ -16,8 +16,10 @@ SVG_MARKERS = {
     "aortic_bifurcation_length_mm": {"x": 348, "y": 176},
     "neck_angle_deg": {"x": 116, "y": 94},
     "right_iliac_diameter_mm": {"x": 92, "y": 388},
+    "right_eia_diameter_mm": {"x": 92, "y": 470},
     "right_iliac_length_mm": {"x": 112, "y": 432},
     "left_iliac_diameter_mm": {"x": 548, "y": 388},
+    "left_eia_diameter_mm": {"x": 548, "y": 470},
     "left_iliac_length_mm": {"x": 526, "y": 432},
 }
 

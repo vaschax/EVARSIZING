@@ -5,7 +5,7 @@ from __future__ import annotations
 import streamlit as st
 
 from domain.constants import BORDERLINE_OVERSIZE_MAX, BORDERLINE_OVERSIZE_MIN, IDEAL_OVERSIZE_MAX, IDEAL_OVERSIZE_MIN
-from domain.models import ComponentRecommendation, Recommendation
+from domain.models import ComponentRecommendation, Recommendation, WarningMessage
 
 
 def render_oversize_badge(value: float | None) -> None:
@@ -52,8 +52,27 @@ def render_overlap_summary(component: ComponentRecommendation) -> None:
             </span>
             """
         )
+    if component.access_profile_fr is not None and component.required_access_diameter_mm is not None:
+        badges.append(
+            f"""
+            <span style="display:inline-block;padding:0.18rem 0.5rem;border-radius:999px;
+            font-size:0.8rem;background:#fee2e2;color:#991b1b;">
+            Access {component.access_profile_fr:.0f}F (~{component.required_access_diameter_mm:.1f} mm)
+            </span>
+            """
+        )
     if badges:
         st.markdown("".join(badges), unsafe_allow_html=True)
+
+
+def render_warning(item: WarningMessage) -> None:
+    if item.severity == "critical":
+        st.error(item.message)
+        return
+    if item.severity == "info":
+        st.info(item.message)
+        return
+    st.warning(item.message)
 
 
 def render_recommendation_card(rec: Recommendation) -> None:
@@ -81,6 +100,6 @@ def render_recommendation_card(rec: Recommendation) -> None:
             st.write(component.label)
             st.caption(f"{component.details} | {official}{extra}")
     for item in rec.warnings:
-        st.warning(item)
+        render_warning(item)
     for note in rec.notes:
         st.caption(note)

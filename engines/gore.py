@@ -13,14 +13,17 @@ from evar_data import (
     GORE_ILIAC_EXTENDERS,
 )
 from domain.constants import GORE_REQUIRED_OVERLAP_LARGE_MM, GORE_REQUIRED_OVERLAP_SMALL_MM
-from domain.models import ComponentRecommendation, Measurements, Recommendation
+from domain.models import ComponentRecommendation, Measurements, Recommendation, WarningMessage
 from engines.common import (
+    build_access_warning,
     band_label,
     closest_midpoint_penalty,
     in_range,
     oversize_pct,
+    profile_fr_from_item,
     score_recommendation,
     status_from_flags,
+    make_warning,
 )
 
 
@@ -67,24 +70,25 @@ def _gore_extenders_for(m: Measurements) -> list[str]:
 
 
 def recommend_gore_family(pool: list[dict[str, Any]], family_label: str, m: Measurements) -> Recommendation:
-    warnings: list[str] = []
+    warnings: list[WarningMessage] = []
     body_candidates = _pick_gore_main_body(pool, m)
     main_body = next((item for item in body_candidates if item["overall_length_mm"] <= m.ipsilateral_length_mm), body_candidates[0] if body_candidates else None)
     if not body_candidates:
-        warnings.append("Brak głównego korpusu Gore dla kombinacji szyi i strony ipsilateralnej.")
+        warnings.append(make_warning("Brak głównego korpusu Gore dla kombinacji szyi i strony ipsilateralnej.", code="gore_no_main_body"))
     elif main_body and main_body["overall_length_mm"] > m.ipsilateral_length_mm:
-        warnings.append("Najbliższy korpus Gore jest dłuższy niż zadeklarowana długość strony ipsilateralnej.")
+        warnings.append(make_warning("Najbliższy korpus Gore jest dłuższy niż zadeklarowana długość strony ipsilateralnej.", code="gore_body_too_long"))
 
     contra_leg, all_legs = _pick_gore_leg(m)
     if not contra_leg:
-        warnings.append("Brak odnogi kontralateralnej Gore dla podanej średnicy biodrowej.")
+        warnings.append(make_warning("Brak odnogi kontralateralnej Gore dla podanej średnicy biodrowej.", code="gore_no_contra_limb"))
     elif contra_leg["length_mm"] > m.contralateral_length_mm:
-        warnings.append("Najkrótsza odnoga kontralateralna Gore jest dłuższa niż zadeklarowana długość naczynia.")
+        warnings.append(make_warning("Najkrótsza odnoga kontralateralna Gore jest dłuższa niż zadeklarowana długość naczynia.", code="gore_limb_too_long"))
 
     exact = bool(main_body and contra_leg and main_body["overall_length_mm"] <= m.ipsilateral_length_mm and contra_leg["length_mm"] <= m.contralateral_length_mm)
     components: list[ComponentRecommendation] = []
     if main_body:
         neck_oversize = oversize_pct(main_body["aortic_diameter_mm"], m.neck_diameter_mm)
+        main_body_profile = profile_fr_from_item(main_body)
         components.append(
             ComponentRecommendation(
                 title=f"Trunk + ipsilateral leg ({m.ipsilateral_label})",
@@ -102,11 +106,23 @@ def recommend_gore_family(pool: list[dict[str, Any]], family_label: str, m: Meas
                 proximal_diameter_mm=main_body["aortic_diameter_mm"],
                 distal_diameter_mm=main_body["iliac_diameter_mm"],
                 covered_length_mm=main_body["overall_length_mm"],
+                access_profile_fr=main_body_profile,
+                required_access_diameter_mm=(main_body_profile / 3.0 + 1.0) if main_body_profile is not None else None,
             )
         )
+        access_warning = build_access_warning(
+            manufacturer="Gore",
+            component_label="main body",
+            side_label=m.ipsilateral_label,
+            profile_fr=main_body_profile,
+            eia_diameter_mm=m.ipsilateral_eia_diameter_mm,
+        )
+        if access_warning:
+            warnings.append(access_warning)
     if contra_leg:
         contra_oversize = oversize_pct(contra_leg["graft_diameter_mm"], m.contralateral_diameter_mm)
         min_overlap_mm = GORE_REQUIRED_OVERLAP_LARGE_MM if contra_leg["graft_diameter_mm"] >= 23 else GORE_REQUIRED_OVERLAP_SMALL_MM
+        contra_profile = profile_fr_from_item(contra_leg)
         components.append(
             ComponentRecommendation(
                 title=f"Odnoga kontralateralna ({m.contralateral_label})",
@@ -123,11 +139,25 @@ def recommend_gore_family(pool: list[dict[str, Any]], family_label: str, m: Meas
                 required_overlap_mm=min_overlap_mm,
                 distal_diameter_mm=contra_leg["graft_diameter_mm"],
                 covered_length_mm=contra_leg["length_mm"],
+                access_profile_fr=contra_profile,
+                required_access_diameter_mm=(contra_profile / 3.0 + 1.0) if contra_profile is not None else None,
             )
         )
         warnings.append(
-            f"Gore: potwierdź overlap między korpusem a odnogą. W tej wersji przyjmuję próg orientacyjny >= {min_overlap_mm:.0f} mm zależnie od średnicy komponentu."
+            make_warning(
+                f"Gore: potwierdź overlap między korpusem a odnogą. W tej wersji przyjmuję próg orientacyjny >= {min_overlap_mm:.0f} mm zależnie od średnicy komponentu.",
+                code="gore_overlap_check",
+            )
         )
+        access_warning = build_access_warning(
+            manufacturer="Gore",
+            component_label="contralateral limb",
+            side_label=m.contralateral_label,
+            profile_fr=contra_profile,
+            eia_diameter_mm=m.contralateral_eia_diameter_mm,
+        )
+        if access_warning:
+            warnings.append(access_warning)
 
     notes = [
         "Gore ma zintegrowaną gałąź ipsilateralną w korpusie głównym; aplikacja dobiera osobno tylko komponent kontralateralny.",
@@ -137,7 +167,7 @@ def recommend_gore_family(pool: list[dict[str, Any]], family_label: str, m: Meas
         manufacturer="Gore",
         family=family_label,
         status=status_from_flags(exact, bool(components)),
-        score=score_recommendation(exact, len(warnings)),
+        score=score_recommendation(exact, warnings),
         warnings=tuple(warnings),
         components=tuple(components),
         notes=tuple(notes),

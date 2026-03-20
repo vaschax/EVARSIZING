@@ -11,6 +11,8 @@ def valid_measurements(**overrides) -> Measurements:
         "aortic_bifurcation_length_mm": 110.0,
         "right_iliac_diameter_mm": 13.0,
         "left_iliac_diameter_mm": 14.0,
+        "right_eia_diameter_mm": 8.0,
+        "left_eia_diameter_mm": 8.5,
         "right_iliac_length_mm": 115.0,
         "left_iliac_length_mm": 120.0,
         "ipsilateral_side": "right",
@@ -33,5 +35,7 @@ def test_measurements_compute_ipsilateral_and_contralateral_views() -> None:
     m = valid_measurements(ipsilateral_side="left")
     assert m.ipsilateral_diameter_mm == 14.0
     assert m.contralateral_diameter_mm == 13.0
+    assert m.ipsilateral_eia_diameter_mm == 8.5
+    assert m.contralateral_eia_diameter_mm == 8.0
     assert m.ipsilateral_label == "Lewa"
     assert m.contralateral_label == "Prawa"

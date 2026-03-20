@@ -28,8 +28,10 @@ NUMERIC_FIELDS = (
     NumericField("aortic_bifurcation_length_mm", "L2", "Nerki → rozwidlenie [mm]", 20.0, 250.0, 110.0, 1.0, "Aorta", "%.0f"),
     NumericField("neck_angle_deg", "A1", "Angulacja szyi [°]", 0.0, 120.0, 35.0, 1.0, "Aorta", "%.0f"),
     NumericField("right_iliac_diameter_mm", "D-R", "Prawa biodrowa landing zone [mm]", 5.0, 35.0, 13.0, 0.5, "Prawa biodrowa"),
+    NumericField("right_eia_diameter_mm", "EIA-R", "Prawa EIA dostęp [mm]", 4.0, 25.0, 8.0, 0.5, "Prawa biodrowa"),
     NumericField("right_iliac_length_mm", "L-R", "Prawa biodrowa długość robocza [mm]", 20.0, 220.0, 115.0, 1.0, "Prawa biodrowa", "%.0f"),
     NumericField("left_iliac_diameter_mm", "D-L", "Lewa biodrowa landing zone [mm]", 5.0, 35.0, 14.0, 0.5, "Lewa biodrowa"),
+    NumericField("left_eia_diameter_mm", "EIA-L", "Lewa EIA dostęp [mm]", 4.0, 25.0, 8.0, 0.5, "Lewa biodrowa"),
     NumericField("left_iliac_length_mm", "L-L", "Lewa biodrowa długość robocza [mm]", 20.0, 220.0, 120.0, 1.0, "Lewa biodrowa", "%.0f"),
 )
 
@@ -59,6 +61,8 @@ def build_measurements_from_state() -> Measurements:
         aortic_bifurcation_length_mm=float(st.session_state["aortic_bifurcation_length_mm"]),
         right_iliac_diameter_mm=float(st.session_state["right_iliac_diameter_mm"]),
         left_iliac_diameter_mm=float(st.session_state["left_iliac_diameter_mm"]),
+        right_eia_diameter_mm=float(st.session_state["right_eia_diameter_mm"]),
+        left_eia_diameter_mm=float(st.session_state["left_eia_diameter_mm"]),
         right_iliac_length_mm=float(st.session_state["right_iliac_length_mm"]),
         left_iliac_length_mm=float(st.session_state["left_iliac_length_mm"]),
         ipsilateral_side=str(st.session_state["ipsilateral_side"]),
