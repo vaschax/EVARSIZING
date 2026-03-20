@@ -52,8 +52,8 @@ def build_plan_pdf(
     pdf.set_font("Helvetica", "", 10)
     measurement_lines = [
         f"D1 neck diameter: {measurements.neck_diameter_mm:.1f} mm",
-        f"L1 neck length: {measurements.neck_length_mm:.0f} mm",
-        f"L2 renal to bifurcation: {measurements.aortic_bifurcation_length_mm:.0f} mm",
+        f"Neck length: {measurements.neck_length_mm:.0f} mm",
+        f"Cook L1 renal to bifurcation: {measurements.aortic_bifurcation_length_mm:.0f} mm",
         f"Neck angle: {measurements.neck_angle_deg:.0f} deg",
         f"Right iliac landing / EIA: {measurements.right_iliac_diameter_mm:.1f} mm / {measurements.right_eia_diameter_mm:.1f} mm",
         f"Left iliac landing / EIA: {measurements.left_iliac_diameter_mm:.1f} mm / {measurements.left_eia_diameter_mm:.1f} mm",

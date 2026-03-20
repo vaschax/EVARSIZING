@@ -24,8 +24,8 @@ class NumericField:
 
 NUMERIC_FIELDS = (
     NumericField("neck_diameter_mm", "D1", "Średnica szyi aorty [mm]", 10.0, 45.0, 24.0, 0.5, "Aorta"),
-    NumericField("neck_length_mm", "L1", "Długość szyi [mm]", 1.0, 200.0, 95.0, 1.0, "Aorta", "%.0f"),
-    NumericField("aortic_bifurcation_length_mm", "L2", "Nerki → rozwidlenie [mm]", 20.0, 250.0, 110.0, 1.0, "Aorta", "%.0f"),
+    NumericField("neck_length_mm", "NL", "Długość szyi proksymalnej [mm]", 1.0, 200.0, 95.0, 1.0, "Aorta", "%.0f"),
+    NumericField("aortic_bifurcation_length_mm", "L1", "Nerki → rozwidlenie aorty [mm]", 20.0, 250.0, 110.0, 1.0, "Aorta", "%.0f"),
     NumericField("neck_angle_deg", "A1", "Angulacja szyi [°]", 0.0, 120.0, 35.0, 1.0, "Aorta", "%.0f"),
     NumericField("right_iliac_diameter_mm", "D-R", "Prawa biodrowa landing zone [mm]", 5.0, 35.0, 13.0, 0.5, "Prawa biodrowa"),
     NumericField("right_eia_diameter_mm", "EIA-R", "Prawa EIA dostęp [mm]", 4.0, 25.0, 8.0, 0.5, "Prawa biodrowa"),

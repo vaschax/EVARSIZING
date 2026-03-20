@@ -43,6 +43,7 @@ pytest
 
 - To jest prototyp wspomagający planowanie, a nie samodzielne narzędzie do decyzji klinicznej.
 - Logika Cook i Gore jest oparta o jawne tabele z załączonych worksheetów.
+- Dla Cook długość korpusu głównego jest liczona z odległości od nerkowych do rozwidlenia aorty (`worksheet L1`), a nie z długości szyi proksymalnej.
 - Logika Medtronic jest częściowo heurystyczna, ponieważ załączony PDF podaje rozmiary urządzenia, ale nie pełne zakresy naczyń.
 - W aplikacji jest liczony oversizing oraz pokazywane są ostrzeżenia hostile anatomy i overlap, ale nadal należy je traktować jako wsparcie planowania, a nie ostateczne IFU.
 - Formularz pomiarowy i worksheet SVG działają na wspólnym `session_state`, więc zmiany w pomiarach natychmiast przeliczają ranking i overlay komponentów.

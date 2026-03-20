@@ -1,3 +1,4 @@
+from evar_data import GORE_ACTIVE_CONTROL_MAIN_BODIES, GORE_C3_MAIN_BODIES
 from recommender import Measurements, build_recommendations, oversize_pct
 
 
@@ -47,3 +48,34 @@ def test_access_warning_becomes_critical_for_narrow_eia() -> None:
     bundle = build_recommendations(valid_measurements(right_eia_diameter_mm=5.5))
     gore = next(item for item in bundle.recommendations if item.family == "EXCLUDER Conformable AAA (Active Control)")
     assert any(item.severity == "critical" and "EIA 5.5 mm" in item.message for item in gore.warnings)
+
+
+def test_cook_main_body_length_uses_renal_to_bifurcation_distance() -> None:
+    bundle = build_recommendations(valid_measurements(neck_length_mm=8.0, aortic_bifurcation_length_mm=95.0))
+    cook = next(item for item in bundle.recommendations if item.manufacturer == "Cook")
+    main_body = next(item for item in cook.components if item.component_type == "main_body")
+    assert "CL 84 mm | IL 108 mm" in main_body.label
+
+
+def test_gore_catalogues_match_verified_pdf_suffixes() -> None:
+    active_control_catalogues = {item["catalogue"] for item in GORE_ACTIVE_CONTROL_MAIN_BODIES}
+    assert {"CXT231212E", "CXT261212E", "CXT281212E"}.issubset(active_control_catalogues)
+    assert all(item["catalogue"].endswith("E") for item in GORE_ACTIVE_CONTROL_MAIN_BODIES)
+    assert all(item.get("catalogue") for item in GORE_C3_MAIN_BODIES)
+
+
+def test_medtronic_long_10_mm_limb_uses_16f_access_profile() -> None:
+    bundle = build_recommendations(
+        valid_measurements(
+            left_iliac_diameter_mm=10.0,
+            left_iliac_length_mm=170.0,
+            left_eia_diameter_mm=6.0,
+        )
+    )
+    medtronic = next(item for item in bundle.recommendations if item.manufacturer == "Medtronic")
+    assert any(
+        warning.severity == "critical"
+        and "Medtronic contralateral limb wymaga dostępu ~ 16F" in warning.message
+        and "EIA 6.0 mm" in warning.message
+        for warning in medtronic.warnings
+    )

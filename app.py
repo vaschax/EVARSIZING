@@ -10,7 +10,9 @@ from evar_data import (
     COOK_MAIN_BODY_DIAMETERS,
     COOK_MAIN_BODY_LENGTHS,
     DATA_SOURCES,
+    GORE_ACTIVE_CONTROL_AORTIC_EXTENDERS,
     GORE_ACTIVE_CONTROL_MAIN_BODIES,
+    GORE_C3_AORTIC_EXTENDERS,
     GORE_C3_MAIN_BODIES,
     GORE_CONTRALATERAL_LEGS,
     MEDTRONIC_BIFURCATIONS,
@@ -96,11 +98,11 @@ st.error(
 )
 
 summary_cols = st.columns(5)
-summary_cols[0].metric("Szyja", f"{measurements.neck_diameter_mm:.1f} mm", f"L1 {measurements.neck_length_mm:.0f} mm")
+summary_cols[0].metric("Szyja", f"{measurements.neck_diameter_mm:.1f} mm", f"neck len {measurements.neck_length_mm:.0f} mm")
 summary_cols[1].metric("Ipsilateralna", measurements.ipsilateral_label, f"{measurements.ipsilateral_diameter_mm:.1f} mm / EIA {measurements.ipsilateral_eia_diameter_mm:.1f} mm")
 summary_cols[2].metric("Kontralateralna", measurements.contralateral_label, f"{measurements.contralateral_diameter_mm:.1f} mm / EIA {measurements.contralateral_eia_diameter_mm:.1f} mm")
 summary_cols[3].metric("Długości", f"{measurements.ipsilateral_length_mm:.0f}/{measurements.contralateral_length_mm:.0f} mm", "ipsi/contra")
-summary_cols[4].metric("Angulacja", f"{measurements.neck_angle_deg:.0f}°", f"L2 {measurements.aortic_bifurcation_length_mm:.0f} mm")
+summary_cols[4].metric("Angulacja", f"{measurements.neck_angle_deg:.0f}°", f"renal→bif {measurements.aortic_bifurcation_length_mm:.0f} mm")
 
 if result.warnings:
     with st.expander("Globalne ostrzeżenia", expanded=True):
@@ -207,8 +209,12 @@ with tab_tables:
     with st.expander("Gore"):
         st.write("Active Control main bodies")
         st.dataframe(pd.DataFrame(GORE_ACTIVE_CONTROL_MAIN_BODIES), hide_index=True, use_container_width=True)
+        st.write("Active Control aortic extenders")
+        st.dataframe(pd.DataFrame(GORE_ACTIVE_CONTROL_AORTIC_EXTENDERS), hide_index=True, use_container_width=True)
         st.write("C3 main bodies")
         st.dataframe(pd.DataFrame(GORE_C3_MAIN_BODIES), hide_index=True, use_container_width=True)
+        st.write("C3 aortic extenders")
+        st.dataframe(pd.DataFrame(GORE_C3_AORTIC_EXTENDERS), hide_index=True, use_container_width=True)
         st.write("Contralateral legs")
         st.dataframe(pd.DataFrame(GORE_CONTRALATERAL_LEGS), hide_index=True, use_container_width=True)
 
