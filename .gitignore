@@ -1,0 +1,5 @@
+.venv/
+.tmp_pages/
+__pycache__/
+.DS_Store
+.streamlit/
