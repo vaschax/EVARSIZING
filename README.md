@@ -1,6 +1,6 @@
 # EVAR sizing prototype
 
-Prototyp aplikacji `Streamlit` do wspomagania planowania EVAR na podstawie wymiarów aorty i tętnic biodrowych.
+Prototyp aplikacji `Streamlit` do wspomagania planowania EVAR na podstawie wymiarów aorty i tętnic biodrowych. Aktualna wersja ma już wydzieloną warstwę domenową, osobne silniki producentów oraz worksheet oparty o wspólny `session_state`.
 
 ## Disclaimer kliniczny
 
@@ -10,9 +10,13 @@ odpowiedzialności klinicznej za decyzje podjęte na podstawie tego prototypu.
 
 ## Co zawiera
 
-- `app.py`: interfejs użytkownika.
+- `app.py`: główny interfejs `Streamlit`.
+- `domain/`: modele domenowe i stałe algorytmu.
+- `engines/`: osobne silniki rekomendacji dla Cook, Gore i Medtronic.
+- `ui/`: formularz, karty rekomendacji i dynamiczny SVG worksheetu.
 - `evar_data.py`: jawne tabele rozmiarów przepisane z załączonych PDF-ów.
-- `recommender.py`: logika dopasowania i ostrzeżeń.
+- `recommender.py`: stabilna warstwa API sklejająca silniki i ostrzeżenia globalne.
+- `tests/`: testy jednostkowe walidacji i rekomendacji.
 
 ## Uruchomienie w VS Code
 
@@ -29,9 +33,16 @@ source .venv/bin/activate
 streamlit run app.py
 ```
 
+4. Uruchom testy:
+
+```bash
+pytest
+```
+
 ## Ważne
 
 - To jest prototyp wspomagający planowanie, a nie samodzielne narzędzie do decyzji klinicznej.
 - Logika Cook i Gore jest oparta o jawne tabele z załączonych worksheetów.
 - Logika Medtronic jest częściowo heurystyczna, ponieważ załączony PDF podaje rozmiary urządzenia, ale nie pełne zakresy naczyń.
 - W aplikacji jest liczony oversizing oraz pokazywane są ostrzeżenia hostile anatomy i overlap, ale nadal należy je traktować jako wsparcie planowania, a nie ostateczne IFU.
+- Formularz pomiarowy i worksheet SVG działają na wspólnym `session_state`, więc zmiany w pomiarach natychmiast przeliczają ranking i overlay komponentów.
