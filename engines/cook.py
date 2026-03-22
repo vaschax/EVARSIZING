@@ -154,6 +154,7 @@ def recommend_cook(m: Measurements) -> Recommendation:
             "Reguły oparte bezpośrednio o worksheet Zenith Alpha.",
             "Dla Cook długość korpusu głównego jest dobierana z odległości nerki -> rozwidlenie aorty, a nie z długości szyi proksymalnej.",
             "Worksheet Cook podaje też profil dostępu: 6.0 mm OD dla graftów 22-32 mm oraz 6.5 mm OD dla 36 mm.",
+            "Cook Zenith Alpha: potwierdź IFU dla maksymalnej angulacji szyi. Oficjalne IFU podaje do 60° angulacji infrarenalnej i do 45° suprarenalnej.",
         ),
         source=DATA_SOURCES["cook"],
     )

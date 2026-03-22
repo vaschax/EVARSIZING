@@ -144,6 +144,7 @@ def recommend_medtronic(m: Measurements) -> Recommendation:
     iliac_ext_label = ", ".join(f"{item['diameter_mm']} mm" for item in iliac_ext[:4]) if iliac_ext else ""
     notes = [
         "Komponenty oznaczone jako przybliżone należy potwierdzić w pełnym IFU Endurant.",
+        "Medtronic Endurant II / IIs: potwierdź IFU dla angulacji szyi. Materiały Medtronic dopuszczają do 60° przy szyi >= 10 mm lub do 75° przy szyi >= 15 mm, jeśli angulacja suprarenalna nie przekracza 60°.",
         f"Możliwe aortic extenders: {aortic_ext_label}" if extenders else "Brak oczywistego aortic extendera w przyjętej heurystyce.",
         f"Możliwe iliac extenders: {iliac_ext_label}" if iliac_ext else "Brak oczywistego iliac extendera w przyjętej heurystyce.",
     ]

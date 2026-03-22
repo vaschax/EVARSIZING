@@ -51,6 +51,12 @@ def _gore_family_overlap_warning(family_label: str) -> str:
     return "Gore C3: potwierdź overlap komponentów bezpośrednio w IFU; w tej wersji nie jest on liczony automatycznie."
 
 
+def _gore_angulation_note(family_label: str) -> str:
+    if "Active Control" in family_label:
+        return "Gore Active Control: potwierdź IFU dla angulacji szyi. Materiały producenta dopuszczają do 90° przy szyi >= 10 mm."
+    return "Gore C3: potwierdź IFU dla angulacji szyi. Materiały producenta dla standardowego EXCLUDER C3 wskazują do 60° przy szyi >= 15 mm."
+
+
 def _pick_gore_leg(m: Measurements) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
     all_matches = [item for item in GORE_CONTRALATERAL_LEGS if in_range(m.contralateral_diameter_mm, item["iliac_range_mm"])]
     exact = [item for item in all_matches if item["length_mm"] <= m.contralateral_length_mm]
@@ -171,6 +177,7 @@ def recommend_gore_family(
 
     notes = [
         "Gore ma zintegrowaną gałąź ipsilateralną w korpusie głównym; aplikacja dobiera osobno tylko komponent kontralateralny.",
+        _gore_angulation_note(family_label),
         *_gore_extenders_for(m, aortic_extenders=aortic_extenders),
     ]
     return Recommendation(

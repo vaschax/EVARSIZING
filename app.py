@@ -124,12 +124,11 @@ st.error(
     "(np. TeraRecon, OsiriX, 3mensio) w oparciu o pełne, oficjalne IFU producenta."
 )
 
-summary_cols = st.columns(5)
-summary_cols[0].metric("Szyja", f"{measurements.neck_diameter_mm:.1f} mm", f"neck len {measurements.neck_length_mm:.0f} mm")
+summary_cols = st.columns(4)
+summary_cols[0].metric("Szyja", f"{measurements.neck_diameter_mm:.1f} mm", f"L1 {measurements.neck_length_mm:.0f} mm")
 summary_cols[1].metric("Ipsilateralna", measurements.ipsilateral_label, f"{measurements.ipsilateral_diameter_mm:.1f} mm / EIA {measurements.ipsilateral_eia_diameter_mm:.1f} mm")
 summary_cols[2].metric("Kontralateralna", measurements.contralateral_label, f"{measurements.contralateral_diameter_mm:.1f} mm / EIA {measurements.contralateral_eia_diameter_mm:.1f} mm")
-summary_cols[3].metric("Długości", f"{measurements.ipsilateral_length_mm:.0f}/{measurements.contralateral_length_mm:.0f} mm", "ipsi/contra")
-summary_cols[4].metric("Angulacja", f"{measurements.neck_angle_deg:.0f}°", f"renal→bif {measurements.aortic_bifurcation_length_mm:.0f} mm")
+summary_cols[3].metric("Nerkowe → bifurkacja", f"{measurements.aortic_bifurcation_length_mm:.0f} mm", f"ipsi/contra {measurements.ipsilateral_length_mm:.0f}/{measurements.contralateral_length_mm:.0f} mm")
 
 if result.warnings:
     with st.expander("Globalne ostrzeżenia", expanded=True):
@@ -171,8 +170,6 @@ with tab_worksheet:
     left_col, center_col, right_col = st.columns([0.82, 2.25, 0.92], gap="large")
     with left_col:
         st.markdown("**Lewa strona worksheetu**")
-        render_field_card("neck_angle_deg", compact=True)
-        st.write("")
         render_field_card("right_iliac_diameter_mm", compact=True)
         render_field_card("right_iliac_length_mm", compact=True)
         render_field_card("right_eia_diameter_mm", compact=True)
@@ -194,6 +191,13 @@ with tab_worksheet:
         render_field_card("left_iliac_diameter_mm", compact=True)
         render_field_card("left_iliac_length_mm", compact=True)
         render_field_card("left_eia_diameter_mm", compact=True)
+        st.radio(
+            "Strona ipsilateralna / planowana introdukcja",
+            options=["right", "left"],
+            format_func=lambda item: "Prawa" if item == "right" else "Lewa",
+            horizontal=True,
+            key="ipsilateral_side",
+        )
 
     with st.expander("Tabela pomiarów", expanded=False):
         st.dataframe(pd.DataFrame(measurement_rows()), hide_index=True, use_container_width=True)

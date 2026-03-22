@@ -90,8 +90,6 @@ def build_global_warnings(m: Measurements) -> list[WarningMessage]:
         )
     elif m.neck_length_mm < SHORT_NECK_LENGTH_MM:
         warnings.append(make_warning("Krótka szyja aorty (< 15 mm) zwiększa ryzyko i zwykle wymaga bardzo ostrożnej kwalifikacji.", code="short_neck"))
-    if m.neck_angle_deg >= HOSTILE_NECK_ANGLE_DEG:
-        warnings.append(make_warning("Znaczna angulacja szyi (>= 60°) wymaga weryfikacji IFU i doświadczenia operatora.", code="neck_angulation"))
     if min(m.right_iliac_diameter_mm, m.left_iliac_diameter_mm) < MIN_ILIAC_ACCESS_MM:
         warnings.append(make_warning("Jedna z tętnic biodrowych ma średnicę < 8 mm, co może oznaczać trudny dostęp i ryzyko okluzji.", code="small_iliac"))
     if m.neck_diameter_mm > HOSTILE_NECK_DIAMETER_MM:
